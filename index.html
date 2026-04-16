@@ -179,6 +179,11 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 <script>
 let passages=[], results=[];
 
+/* localhost → 프록시 사용, 그 외(github.io 등) → 직접 호출 */
+const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const API_URL  = IS_LOCAL ? '/v1/messages' : 'https://api.anthropic.com/v1/messages';
+const API_HEADERS_EXTRA = IS_LOCAL ? {} : {'anthropic-dangerous-direct-browser-calls':'true'};
+
 /* ── API 키 자동 저장/불러오기 ── */
 function saveApiKey(){
   const key=document.getElementById('apiKey').value;
@@ -330,13 +335,13 @@ ${text}
 - 종속접속사(since/because/as/if/when 등)는 color를 j, label을 "접속사"
 - 관계대명사(that/which/who 등)는 color를 j, label을 "관계대명사"`;
 
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
+  const res=await fetch(API_URL,{
     method:'POST',
     headers:{
       'Content-Type':'application/json',
       'x-api-key':key,
       'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-calls':'true',
+      ...API_HEADERS_EXTRA,
     },
     body:JSON.stringify({
       model:'claude-sonnet-4-5',
@@ -438,13 +443,13 @@ async function testApi(){
   if(!key){ el.style.color='#e53030'; el.textContent='키를 먼저 입력하세요'; return; }
   el.style.color='#888'; el.textContent='테스트 중...';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
+    const res=await fetch(API_URL,{
       method:'POST',
       headers:{
         'Content-Type':'application/json',
         'x-api-key':key,
         'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-calls':'true',
+        ...API_HEADERS_EXTRA,
       },
       body:JSON.stringify({
         model:'claude-haiku-4-5-20251001',
