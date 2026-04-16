@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>영어 문법 구조 분석기</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh;}
+.top-bar{background:white;border-bottom:1px solid #e0ddd5;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.top-bar h1{font-size:15px;font-weight:600;color:#1a1a1a;}
+.api-row{display:flex;align-items:center;gap:8px;}
+.api-row label{font-size:12px;color:#888;}
+.api-row input{font-size:12px;padding:5px 10px;border:1px solid #ddd;border-radius:6px;width:280px;font-family:monospace;color:#333;}
+.api-row input::placeholder{color:#bbb;}
+.main{max-width:960px;margin:0 auto;padding:24px 20px;}
+
+/* Step 1 */
+.card{background:white;border-radius:10px;border:1px solid #e0ddd5;padding:20px;margin-bottom:16px;}
+.step-label{font-size:11px;font-weight:600;color:#888;letter-spacing:.06em;margin-bottom:10px;}
+.upload-zone{border:2px dashed #d0cdc5;border-radius:8px;padding:28px;text-align:center;cursor:pointer;transition:all .15s;}
+.upload-zone:hover{border-color:#e53030;background:#fff5f5;}
+.upload-zone input{display:none;}
+.upload-icon{width:36px;height:36px;margin:0 auto 10px;background:#f5f4f0;border-radius:8px;display:flex;align-items:center;justify-content:center;}
+.upload-icon svg{width:20px;height:20px;color:#888;}
+.upload-text{font-size:13px;color:#888;}
+.upload-text span{color:#e53030;font-weight:500;}
+
+/* Step 2 */
+.select-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.select-info{font-size:12px;color:#888;}
+.btn-sm{font-size:12px;padding:4px 12px;border-radius:20px;border:1px solid #ddd;background:white;color:#555;cursor:pointer;}
+.btn-sm:hover{background:#f5f4f0;}
+.passage-grid{border:1px solid #e8e5e0;border-radius:8px;overflow:hidden;max-height:300px;overflow-y:auto;}
+.passage-row{display:flex;align-items:center;gap:12px;padding:8px 12px;border-bottom:1px solid #f0ede8;cursor:pointer;transition:background .1s;}
+.passage-row:last-child{border-bottom:none;}
+.passage-row:hover{background:#fafaf8;}
+.passage-row input[type=checkbox]{width:15px;height:15px;flex-shrink:0;accent-color:#e53030;}
+.src-badge{font-size:11px;font-weight:600;color:#185FA5;white-space:nowrap;min-width:175px;}
+.src-preview{font-size:12px;color:#aaa;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;flex:1;}
+
+/* Buttons */
+.btn-primary{background:#e53030;color:white;border:none;border-radius:7px;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-primary:hover{background:#c42020;}
+.btn-primary:disabled{background:#e8a0a0;cursor:not-allowed;}
+.btn-print{background:#185FA5;color:white;border:none;border-radius:7px;padding:10px 22px;font-size:13px;font-weight:600;cursor:pointer;}
+.btn-print:hover{background:#0c447c;}
+.btn-reset{background:white;color:#555;border:1px solid #ddd;border-radius:7px;padding:10px 22px;font-size:13px;cursor:pointer;}
+.btn-reset:hover{background:#f5f4f0;}
+
+/* Progress */
+.progress-wrap{margin-top:12px;}
+.progress-status{font-size:12px;color:#888;margin-bottom:5px;}
+.progress-bar{height:4px;background:#f0ede8;border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;background:#e53030;border-radius:2px;transition:width .3s;}
+.err-msg{font-size:12px;color:#e53030;background:#fff0f0;border:1px solid #f5c0c0;border-radius:6px;padding:8px 12px;margin-top:8px;font-family:monospace;}
+
+/* Results */
+.results-topbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:20px;background:white;border:1px solid #e0ddd5;border-radius:8px;padding:12px 16px;}
+.li{display:flex;align-items:center;gap:5px;font-size:12px;color:#555;}
+.ld{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+
+/* Passage block */
+.passage-block{background:white;border-radius:10px;border:1px solid #e0ddd5;margin-bottom:28px;overflow:hidden;}
+.passage-header{background:#fff5f5;border-bottom:2px solid #e53030;padding:12px 18px;}
+.passage-source{font-size:15px;font-weight:700;color:#e53030;}
+.passage-body{padding:18px;}
+
+/* Sentence card */
+.sentence-card{border:1.5px solid #e53030;border-radius:7px;padding:14px 14px 12px;margin-bottom:13px;}
+.sentence-card:last-child{margin-bottom:0;}
+.sent-header{display:flex;align-items:center;margin-bottom:10px;}
+.sent-num{width:18px;height:18px;border-radius:50%;background:#e53030;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:8px;}
+.sent-type{font-size:10px;color:#aaa;}
+
+.clause-block{display:flex;align-items:stretch;gap:10px;margin-bottom:13px;}
+.clause-side{display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:1px;}
+.clause-tag{font-size:9px;color:#aaa;white-space:nowrap;margin-bottom:3px;}
+.clause-vline{flex:1;width:1px;background:#e0ddd5;min-height:8px;}
+.token-area{display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:5px;}
+.token{display:inline-flex;flex-direction:column;align-items:center;margin:0 2px;}
+.lbl{font-size:9px;font-weight:600;letter-spacing:.04em;height:13px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;}
+.lbl-empty{height:13px;margin-bottom:3px;visibility:hidden;}
+.wd{font-size:14px;line-height:1.3;padding-bottom:2px;white-space:nowrap;font-family:Georgia,serif;}
+.punct{font-size:14px;color:#1a1a1a;padding-top:16px;margin:0 1px;font-family:Georgia,serif;}
+.gs{display:inline-block;width:5px;}
+
+.cs{color:#185FA5;}.cv{color:#e53030;}.csc{color:#0F6E56;}.co{color:#854F0B;}.cm{color:#993556;}.cj{color:#7F77DD;}.cplain{color:#1a1a1a;}
+.us{border-bottom:2.5px solid #185FA5;}.uv{border-bottom:2.5px solid #e53030;}.usc{border-bottom:2.5px solid #0F6E56;}.uo{border-bottom:2.5px solid #854F0B;}.um{border-bottom:2.5px solid #993556;}
+
+.divider{border:none;border-top:1px solid #f0ede8;margin:.7rem 0;}
+.korean{font-size:13px;color:#333;line-height:1.75;}
+.gpoint{display:flex;align-items:flex-start;gap:6px;margin-top:.4rem;font-size:12px;color:#666;line-height:1.55;}
+.gicon{width:14px;height:14px;border-radius:50%;background:#e53030;color:white;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.gkey{color:#1a1a1a;font-weight:600;margin-right:4px;}
+
+@media print {
+  body{background:white;}
+  .top-bar,.main > .card,.results-topbar{display:none!important;}
+  .main{padding:0;max-width:100%;}
+  .legend{display:flex!important;border:none;padding:8px 0;margin-bottom:12px;}
+  .passage-block{border:none;border-radius:0;margin:0;page-break-after:always;}
+  .passage-block:last-child{page-break-after:avoid;}
+  .passage-header{background:white;border-bottom:2px solid #e53030;}
+  .sentence-card{break-inside:avoid;border:1.5px solid #e53030;}
+  @page{size:A4 portrait;margin:15mm 14mm;}
+}
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <h1>영어 문법 구조 분석기</h1>
+  <div class="api-row">
+    <label>Anthropic API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-ant-..." oninput="saveApiKey()" />
+    <button class="btn-sm" onclick="testApi()" style="white-space:nowrap;">🔌 연결 테스트</button>
+    <span id="testResult" style="font-size:12px;"></span>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- Step 1: Upload -->
+  <div class="card" id="stepUpload">
+    <div class="step-label">STEP 1 &nbsp;·&nbsp; 엑셀 파일 업로드</div>
+    <div class="upload-zone" onclick="document.getElementById('fi').click()">
+      <input type="file" id="fi" accept=".xlsx,.xls" onchange="handleFile(event)">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9,15 12,12 15,15"/></svg>
+      </div>
+      <div class="upload-text">클릭하여 엑셀 파일 선택 &nbsp;·&nbsp; <span>.xlsx / .xls 지원</span></div>
+      <div style="font-size:11px;color:#bbb;margin-top:6px;">A열: 출처코드 &nbsp;·&nbsp; B열: 지문 텍스트</div>
+    </div>
+  </div>
+
+  <!-- Step 2: Select -->
+  <div class="card" id="stepSelect" style="display:none;">
+    <div class="step-label">STEP 2 &nbsp;·&nbsp; 분석할 지문 선택</div>
+    <div class="select-header">
+      <span class="select-info" id="selCount"></span>
+      <button class="btn-sm" onclick="toggleAll()">전체 선택 / 해제</button>
+    </div>
+    <div class="passage-grid" id="passageGrid"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;">
+      <div>
+        <button class="btn-reset" onclick="resetUpload()" style="margin-right:6px;">다른 파일</button>
+      </div>
+      <button class="btn-primary" id="analyzeBtn" onclick="startAnalysis()" disabled>선택한 지문 분석 시작 →</button>
+    </div>
+    <div class="progress-wrap" id="progressWrap" style="display:none;">
+      <div class="progress-status" id="progressStatus"></div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div id="errBox"></div>
+  </div>
+
+  <!-- Results -->
+  <div id="resultsArea" style="display:none;">
+    <div class="results-topbar">
+      <button class="btn-reset" onclick="resetAll()">처음부터</button>
+      <button class="btn-print" onclick="window.print()">🖨 A4 인쇄 / PDF 저장</button>
+    </div>
+    <div class="legend">
+      <div class="li"><div class="ld" style="background:#185FA5"></div>주어 S</div>
+      <div class="li"><div class="ld" style="background:#e53030"></div>동사 V</div>
+      <div class="li"><div class="ld" style="background:#0F6E56"></div>주격보어 SC</div>
+      <div class="li"><div class="ld" style="background:#854F0B"></div>목적어 O</div>
+      <div class="li"><div class="ld" style="background:#993556"></div>수식어 M</div>
+      <div class="li"><div class="ld" style="background:#7F77DD"></div>접속사</div>
+    </div>
+    <div id="resultsList"></div>
+  </div>
+
+</div>
+
+<script>
+let passages=[], results=[];
+
+/* ── API 키 자동 저장/불러오기 ── */
+function saveApiKey(){
+  const key=document.getElementById('apiKey').value;
+  if(key) localStorage.setItem('anthropic_api_key', key);
+  else localStorage.removeItem('anthropic_api_key');
+}
+function loadApiKey(){
+  const saved=localStorage.getItem('anthropic_api_key');
+  if(saved) document.getElementById('apiKey').value=saved;
+}
+document.addEventListener('DOMContentLoaded', loadApiKey);
+
+/* ── HTML 이스케이프 (XSS 방지) ── */
+function esc(str){
+  return String(str||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function parseSource(code){
+  code=String(code).trim();
+  let m=code.match(/^H(\d+)-(\d{4})-(\d{2})-(\d+)$/);
+  if(m) return `${m[2]}년 ${parseInt(m[3])}월 고${m[1]} ${parseInt(m[4])}번`;
+  m=code.match(/^(\d{2})(\d{2})H(\d+)-(\d+)$/);
+  if(m) return `20${m[1]}년 ${parseInt(m[2])}월 고${m[3]} ${parseInt(m[4])}번`;
+  m=code.match(/^(\d{2})(.+?)-(.+?)-(.+)$/);
+  if(m) return `20${m[1]} ${m[2]} ${m[3]} ${m[4]}`;
+  return code;
+}
+
+function extractText(raw){
+  if(!raw) return '';
+  const s=String(raw).trim();
+  if(s.startsWith('[')){
+    try{ return JSON.parse(s).join(' '); }
+    catch(e){ return s.replace(/^\[|\]$/g,'').replace(/",\s*"/g,' ').replace(/^"|"$/g,''); }
+  }
+  return s;
+}
+
+function handleFile(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    try{
+      const wb=XLSX.read(ev.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1});
+      passages=[];
+      rows.forEach(row=>{
+        if(!row[0]||!row[1]) return;
+        const code=String(row[0]).trim();
+        const text=extractText(row[1]);
+        if(text.length<20) return;
+        passages.push({code,source:parseSource(code),text});
+      });
+      if(passages.length===0){ alert('지문을 찾을 수 없습니다. A열: 출처, B열: 지문인지 확인해주세요.'); return; }
+      renderGrid();
+      document.getElementById('stepSelect').style.display='block';
+      document.getElementById('stepUpload').style.display='none';
+    } catch(err){
+      alert('파일 읽기 오류: '+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderGrid(){
+  const grid=document.getElementById('passageGrid');
+  grid.innerHTML='';
+  passages.forEach((p,i)=>{
+    const row=document.createElement('label');
+    row.className='passage-row';
+    row.innerHTML=`<input type="checkbox" class="pcheck" data-idx="${i}" onchange="updateCount()"><span class="src-badge">${esc(p.source)}</span><span class="src-preview">${esc(p.text.substring(0,90))}...</span>`;
+    grid.appendChild(row);
+  });
+  updateCount();
+}
+
+function updateCount(){
+  const n=document.querySelectorAll('.pcheck:checked').length;
+  document.getElementById('selCount').textContent=`총 ${passages.length}개 지문 · ${n}개 선택`;
+  document.getElementById('analyzeBtn').disabled=n===0;
+}
+
+function toggleAll(){
+  const boxes=document.querySelectorAll('.pcheck');
+  const any=[...boxes].some(b=>!b.checked);
+  boxes.forEach(b=>{b.checked=any;});
+  updateCount();
+}
+
+async function startAnalysis(){
+  const key=document.getElementById('apiKey').value.trim();
+  if(!key){ alert('상단에 Anthropic API Key를 입력해주세요.'); return; }
+
+  const selected=[...document.querySelectorAll('.pcheck:checked')].map(b=>passages[parseInt(b.dataset.idx)]);
+  if(!selected.length) return;
+
+  results=[];
+  document.getElementById('analyzeBtn').disabled=true;
+  document.getElementById('progressWrap').style.display='block';
+  document.getElementById('errBox').innerHTML='';
+  document.getElementById('resultsArea').style.display='none';
+
+  for(let i=0;i<selected.length;i++){
+    const p=selected[i];
+    setStatus(`분석 중... (${i+1} / ${selected.length})  —  ${p.source}`);
+    setProgress((i/selected.length)*100);
+    try{
+      const data=await analyzeOne(p.text, key);
+      results.push({source:p.source, data});
+    } catch(err){
+      results.push({source:p.source, error:true, errMsg:String(err)});
+    }
+    await new Promise(r=>setTimeout(r,500));
+  }
+
+  setProgress(100);
+  setStatus(`완료! ${results.length}개 지문 분석됨`);
+  document.getElementById('analyzeBtn').disabled=false;
+  renderResults();
+}
+
+async function analyzeOne(text, key){
+  const prompt=`다음 영어 지문의 모든 문장을 문법 분석하세요.
+
+지문:
+"""
+${text}
+"""
+
+반드시 아래 JSON 형식만 반환하고 다른 텍스트는 절대 출력하지 마세요. 마크다운 코드블록도 없이 순수 JSON만.
+
+{"sentences":[{"num":1,"type":"문장구조유형(예:단순문,주절+관계절,부사절+주절 등)","clauses":[{"tag":"절이름(주절/부사절/관계절/절1/절2 등)","tokens":[{"label":"S 또는 V 또는 SC 또는 O 또는 M 또는 등위접속사 또는 관계대명사 또는 접속사 또는 빈문자열","word":"단어나어구","color":"s 또는 v 또는 sc 또는 o 또는 m 또는 j 또는 plain","underline":true또는false}],"punct":"구두점또는빈문자열"}],"korean":"자연스러운 한국어 해석","grammar":[{"key":"문법포인트명","desc":"내신 출제 가능한 어법 설명 1~2문장"}]}]}
+
+분석 규칙:
+- 지문의 모든 문장을 빠짐없이 분석
+- grammar는 내신 출제 가능한 핵심 포인트 2~5개
+- 주어가 and로 연결된 경우 하나의 토큰으로 처리
+- 수식어(부사, 전치사구, 부사절 등)는 반드시 M으로 표시
+- 절이 하나뿐인 단순문은 tag를 "주절"로
+- underline은 S/V/SC/O/M 라벨이 있는 토큰만 true, 나머지 false
+- 접속사류(but/and/or)는 color를 j, label을 "등위접속사"
+- 종속접속사(since/because/as/if/when 등)는 color를 j, label을 "접속사"
+- 관계대명사(that/which/who 등)는 color를 j, label을 "관계대명사"`;
+
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-calls':'true',
+    },
+    body:JSON.stringify({
+      model:'claude-sonnet-4-5',
+      max_tokens:8000,
+      messages:[{role:'user',content:prompt}]
+    })
+  });
+
+  if(!res.ok){
+    const t=await res.text();
+    throw new Error(`API ${res.status}: ${t.substring(0,200)}`);
+  }
+
+  const d=await res.json();
+  if(d.error) throw new Error(`${d.error.type}: ${d.error.message}`);
+
+  const textBlocks=(d.content||[]).filter(b=>b.type==='text');
+  if(!textBlocks.length) throw new Error('응답에 텍스트 없음');
+
+  let raw=textBlocks.map(b=>b.text).join('').trim();
+  raw=raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+
+  const parsed=JSON.parse(raw);
+  if(!parsed.sentences) throw new Error('sentences 필드 없음');
+  return parsed;
+}
+
+function renderResults(){
+  const list=document.getElementById('resultsList');
+  list.innerHTML=results.map(r=>{
+    if(r.error) return `
+      <div class="passage-block">
+        <div class="passage-header"><div class="passage-source">${esc(r.source)}</div></div>
+        <div class="passage-body"><div style="font-size:13px;color:#e53030;font-family:monospace;">오류: ${esc(r.errMsg||'알 수 없는 오류')}</div></div>
+      </div>`;
+    return `
+      <div class="passage-block">
+        <div class="passage-header"><div class="passage-source">${esc(r.source)}</div></div>
+        <div class="passage-body">${renderSentences(r.data.sentences)}</div>
+      </div>`;
+  }).join('');
+  document.getElementById('resultsArea').style.display='block';
+  document.getElementById('stepSelect').style.display='none';
+  document.getElementById('stepUpload').style.display='none';
+}
+
+function renderSentences(sents){
+  return (sents||[]).map(s=>`
+    <div class="sentence-card">
+      <div class="sent-header">
+        <div class="sent-num">${s.num|0}</div>
+        <div class="sent-type">${esc(s.type)}</div>
+      </div>
+      ${(s.clauses||[]).map(cl=>`
+        <div class="clause-block">
+          <div class="clause-side">
+            <div class="clause-tag">${esc(cl.tag)}</div>
+            <div class="clause-vline"></div>
+          </div>
+          <div class="token-area">
+            ${(cl.tokens||[]).map(t=>{
+              const c=t.color||'plain';
+              const hasLabel=t.label&&t.label.trim();
+              /* underline만 S/V/SC/O/M 계열에만 적용 (plain·j 는 제외) */
+              const canUnderline=t.underline&&c!=='plain'&&c!=='j';
+              return `<div class="token">
+                ${hasLabel
+                  ? `<div class="lbl c${esc(c)}">${esc(t.label)}</div>`
+                  : `<div class="lbl-empty"></div>`}
+                <div class="wd c${esc(c)}${canUnderline?' u'+esc(c):''}">${esc(t.word)}</div>
+              </div><div class="gs"></div>`;
+            }).join('')}
+            ${cl.punct?`<div class="punct">${esc(cl.punct)}</div>`:''}
+          </div>
+        </div>`).join('')}
+      <div class="divider"></div>
+      <div class="korean">${esc(s.korean)}</div>
+      ${(s.grammar||[]).map(g=>`
+        <div class="gpoint">
+          <div class="gicon">◎</div>
+          <div><span class="gkey">${esc(g.key)}</span> — ${esc(g.desc)}</div>
+        </div>`).join('')}
+    </div>`).join('');
+}
+
+function setStatus(msg){document.getElementById('progressStatus').textContent=msg;}
+function setProgress(pct){document.getElementById('progressFill').style.width=pct+'%';}
+
+function resetUpload(){
+  passages=[];
+  document.getElementById('fi').value='';
+  document.getElementById('stepSelect').style.display='none';
+  document.getElementById('stepUpload').style.display='block';
+}
+
+async function testApi(){
+  const key=document.getElementById('apiKey').value.trim();
+  const el=document.getElementById('testResult');
+  if(!key){ el.style.color='#e53030'; el.textContent='키를 먼저 입력하세요'; return; }
+  el.style.color='#888'; el.textContent='테스트 중...';
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-calls':'true',
+      },
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:10,
+        messages:[{role:'user',content:'hi'}]
+      })
+    });
+    if(res.ok){ el.style.color='#0F6E56'; el.textContent='✓ 연결 성공'; }
+    else{
+      const t=await res.text();
+      el.style.color='#e53030';
+      el.textContent=`✗ API 오류 ${res.status}: ${t.substring(0,80)}`;
+    }
+  } catch(err){
+    el.style.color='#e53030';
+    el.textContent=`✗ ${err.message} — 콘솔(F12)에서 상세 확인`;
+    console.error('[API 테스트 실패]', err);
+  }
+}
+
+function resetAll(){
+  results=[];passages=[];
+  document.getElementById('fi').value='';
+  document.getElementById('resultsArea').style.display='none';
+  document.getElementById('stepUpload').style.display='block';
+  document.getElementById('stepSelect').style.display='none';
+  document.getElementById('progressWrap').style.display='none';
+  document.getElementById('errBox').innerHTML='';
+  setStatus('');
+  setProgress(0); /* ← 진행바 초기화 */
+}
+</script>
+</body>
+</html>
