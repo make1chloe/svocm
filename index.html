@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>영어 문법 구조 분석기</title>
+<title>영어 문법 구조 분석기 v2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -12,9 +12,9 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 .top-bar h1{font-size:15px;font-weight:600;color:#1a1a1a;}
 .api-row{display:flex;align-items:center;gap:8px;}
 .api-row label{font-size:12px;color:#888;}
-.api-row input{font-size:12px;padding:5px 10px;border:1px solid #ddd;border-radius:6px;width:280px;font-family:monospace;color:#333;}
+.api-row input{font-size:12px;padding:5px 10px;border:1px solid #ddd;border-radius:6px;width:260px;font-family:monospace;color:#333;}
 .api-row input::placeholder{color:#bbb;}
-.main{max-width:960px;margin:0 auto;padding:24px 20px;}
+.main{max-width:980px;margin:0 auto;padding:24px 20px;}
 
 /* Step 1 */
 .card{background:white;border-radius:10px;border:1px solid #e0ddd5;padding:20px;margin-bottom:16px;}
@@ -48,71 +48,181 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 .btn-print:hover{background:#0c447c;}
 .btn-reset{background:white;color:#555;border:1px solid #ddd;border-radius:7px;padding:10px 22px;font-size:13px;cursor:pointer;}
 .btn-reset:hover{background:#f5f4f0;}
+.btn-edit{background:white;color:#555;border:1px solid #ddd;border-radius:7px;padding:8px 16px;font-size:12px;cursor:pointer;transition:all .15s;}
+.btn-edit.active{background:#00175c;color:white;border-color:#00175c;}
 
 /* Progress */
 .progress-wrap{margin-top:12px;}
 .progress-status{font-size:12px;color:#888;margin-bottom:5px;}
 .progress-bar{height:4px;background:#f0ede8;border-radius:2px;overflow:hidden;}
 .progress-fill{height:100%;background:#e53030;border-radius:2px;transition:width .3s;}
-.err-msg{font-size:12px;color:#e53030;background:#fff0f0;border:1px solid #f5c0c0;border-radius:6px;padding:8px 12px;margin-top:8px;font-family:monospace;}
 
 /* Results */
-.results-topbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;}
+.results-topbar{display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
 .legend{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:20px;background:white;border:1px solid #e0ddd5;border-radius:8px;padding:12px 16px;}
-.li{display:flex;align-items:center;gap:5px;font-size:12px;color:#555;}
+.li{display:flex;align-items:center;gap:5px;font-size:12px;}
 .ld{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 
 /* Passage block */
 .passage-block{background:white;border-radius:10px;border:1px solid #e0ddd5;margin-bottom:28px;overflow:hidden;}
-.passage-header{background:#fff5f5;border-bottom:2px solid #e53030;padding:12px 18px;}
-.passage-source{font-size:15px;font-weight:700;color:#e53030;}
+.passage-header{background:#f8f6ff;border-bottom:2px solid #00175c;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;}
+.passage-source{font-size:15px;font-weight:700;color:#00175c;}
+.btn-reanalyze{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid #00175c;background:white;color:#00175c;cursor:pointer;white-space:nowrap;}
+.btn-reanalyze:hover{background:#f0f2ff;}
+.btn-reanalyze:disabled{color:#aaa;border-color:#ddd;cursor:not-allowed;}
 .passage-body{padding:18px;}
 
 /* Sentence card */
-.sentence-card{border:1.5px solid #e53030;border-radius:7px;padding:14px 14px 12px;margin-bottom:13px;}
+.sentence-card{border:1.5px solid #00175c;border-radius:7px;padding:14px 14px 12px;margin-bottom:13px;overflow-x:auto;}
 .sentence-card:last-child{margin-bottom:0;}
 .sent-header{display:flex;align-items:center;margin-bottom:10px;}
-.sent-num{width:18px;height:18px;border-radius:50%;background:#e53030;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:8px;}
-.sent-type{font-size:10px;color:#aaa;}
+.sent-num{width:18px;height:18px;border-radius:50%;background:#00175c;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:8px;}
+.sent-type{font-size:11px;color:#aaa;}
 
-.clause-block{display:flex;align-items:stretch;gap:10px;margin-bottom:13px;}
+/* Edit mode: sentence type clickable */
+.edit-mode .sent-type{cursor:pointer;border-bottom:1px dashed #bbb;padding-bottom:1px;}
+.edit-mode .sent-type:hover{color:#00175c;}
+
+.clause-block{display:flex;align-items:stretch;gap:10px;margin-bottom:13px;min-width:0;}
 .clause-side{display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:1px;}
-.clause-tag{font-size:9px;color:#aaa;white-space:nowrap;margin-bottom:3px;}
+.clause-tag{font-size:10px;color:#aaa;white-space:nowrap;margin-bottom:3px;}
 .clause-vline{flex:1;width:1px;background:#e0ddd5;min-height:8px;}
-.token-area{display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:5px;}
+.token-area{display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:5px;min-width:0;}
 .token{display:inline-flex;flex-direction:column;align-items:center;margin:0 2px;}
-.lbl{font-size:9px;font-weight:600;letter-spacing:.04em;height:13px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;}
-.lbl-empty{height:13px;margin-bottom:3px;visibility:hidden;}
-.wd{font-size:14px;line-height:1.3;padding-bottom:2px;white-space:nowrap;font-family:Georgia,serif;}
-.punct{font-size:14px;color:#1a1a1a;padding-top:16px;margin:0 1px;font-family:Georgia,serif;}
+.lbl{font-size:10px;font-weight:600;letter-spacing:.04em;height:14px;display:flex;align-items:center;justify-content:center;margin-bottom:3px;}
+.lbl-empty{height:14px;margin-bottom:3px;}
+.wd{font-size:15px;line-height:1.3;padding-bottom:2px;white-space:nowrap;font-family:Georgia,serif;}
+.punct{font-size:15px;color:#1a1a1a;padding-top:17px;margin:0 1px;font-family:Georgia,serif;}
 .gs{display:inline-block;width:5px;}
 
+/* Colors */
 .cs{color:#185FA5;}.cv{color:#e53030;}.csc{color:#0F6E56;}.co{color:#854F0B;}.cm{color:#993556;}.cj{color:#7F77DD;}.cplain{color:#1a1a1a;}
+/* IO/DO same as O, 진주어 same as S, OC same as SC */
+.cio{color:#854F0B;}.cdo{color:#854F0B;}.c진주어{color:#185FA5;}.coc{color:#0F6E56;}
+/* Underlines */
 .us{border-bottom:2.5px solid #185FA5;}.uv{border-bottom:2.5px solid #e53030;}.usc{border-bottom:2.5px solid #0F6E56;}.uo{border-bottom:2.5px solid #854F0B;}.um{border-bottom:2.5px solid #993556;}
+.uio{border-bottom:2.5px solid #854F0B;}.udo{border-bottom:2.5px solid #854F0B;}.u진주어{border-bottom:2.5px solid #185FA5;}.uoc{border-bottom:2.5px solid #0F6E56;}
+/* 형용사절 */
+.adj-clause .clause-vline{background:#7F77DD;width:2px;}
+.adj-clause .clause-tag{color:#7F77DD;font-weight:700;}
+/* 전치사구 */
+.prep-clause .clause-vline{background:#aaa;width:1px;border-left:1px dashed #aaa;background:transparent;}
+.prep-clause .clause-tag{color:#999;}
+/* 접속사구 */
+.conj-clause .clause-vline{background:#7F77DD;width:1px;}
+.conj-clause .clause-tag{color:#7F77DD;}
 
 .divider{border:none;border-top:1px solid #f0ede8;margin:.7rem 0;}
-.korean{font-size:13px;color:#333;line-height:1.75;}
-.gpoint{display:flex;align-items:flex-start;gap:6px;margin-top:.4rem;font-size:12px;color:#666;line-height:1.55;}
-.gicon{width:14px;height:14px;border-radius:50%;background:#e53030;color:white;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
+.korean{font-size:14px;color:#333;line-height:1.75;}
+.gpoint{display:flex;align-items:flex-start;gap:6px;margin-top:.4rem;font-size:13px;color:#666;line-height:1.55;}
+.gicon{width:14px;height:14px;border-radius:50%;background:#00175c;color:white;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;}
 .gkey{color:#1a1a1a;font-weight:600;margin-right:4px;}
+
+/* ── 편집 모드 ── */
+.edit-mode .token{cursor:pointer;border-radius:4px;padding:1px 2px;transition:background .1s;}
+.edit-mode .token:hover{background:#eef3ff;outline:1px dashed #185FA5;}
+.edit-mode .clause-tag{cursor:pointer;border-bottom:1px dashed #bbb;}
+.edit-mode .clause-tag:hover{color:#00175c;}
+.edit-mode .korean{cursor:pointer;border-bottom:1px dashed #bbb;padding-bottom:2px;}
+.edit-mode .korean:hover{background:#fffae8;}
+.edit-mode .gkey,.edit-mode .gpoint div{cursor:text;}
+[contenteditable="true"]{outline:1.5px solid #185FA5;border-radius:3px;padding:1px 4px;background:#f8fbff;}
+
+/* ── 토큰 편집 팝업 ── */
+#editPopup{display:none;position:fixed;z-index:9999;background:white;border:1.5px solid #00175c;border-radius:10px;padding:16px;box-shadow:0 6px 24px rgba(0,0,0,.18);min-width:220px;}
+#editPopup h3{font-size:12px;font-weight:700;color:#00175c;margin-bottom:12px;}
+#editPopup .ep-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+#editPopup .ep-row label{font-size:11px;color:#888;width:44px;flex-shrink:0;}
+#editPopup select,#editPopup input[type=text]{font-size:12px;padding:4px 7px;border:1px solid #ddd;border-radius:5px;width:100%;}
+#editPopup .ep-check{display:flex;align-items:center;gap:5px;font-size:11px;color:#555;margin-bottom:10px;}
+#editPopup .ep-btns{display:flex;gap:6px;justify-content:flex-end;}
+#editPopup .ep-btns button{font-size:11px;padding:4px 12px;border-radius:5px;cursor:pointer;}
+.ep-save{background:#00175c;color:white;border:none;}
+.ep-cancel{background:white;color:#555;border:1px solid #ddd;}
+.ep-delete{background:#fff0f0;color:#e53030;border:1px solid #f5c0c0;}
+
+/* 절태그 편집 팝업 */
+#tagPopup{display:none;position:fixed;z-index:9999;background:white;border:1.5px solid #00175c;border-radius:8px;padding:12px;box-shadow:0 4px 16px rgba(0,0,0,.15);min-width:160px;}
+#tagPopup h3{font-size:11px;color:#888;margin-bottom:8px;}
+#tagPopup button{display:block;width:100%;text-align:left;font-size:12px;padding:5px 8px;border:none;background:none;cursor:pointer;border-radius:4px;}
+#tagPopup button:hover{background:#f0f2ff;color:#00175c;}
 
 @media print {
   body{background:white;}
-  .top-bar,.main > .card,.results-topbar{display:none!important;}
+  .top-bar,.main>.card,.results-topbar,#editPopup,#tagPopup{display:none!important;}
   .main{padding:0;max-width:100%;}
-  .legend{display:flex!important;border:none;padding:8px 0;margin-bottom:12px;}
+  .legend{display:flex!important;border:none;padding:8px 0;margin-bottom:10px;}
   .passage-block{border:none;border-radius:0;margin:0;page-break-after:always;}
   .passage-block:last-child{page-break-after:avoid;}
-  .passage-header{background:white;border-bottom:2px solid #e53030;}
-  .sentence-card{break-inside:avoid;border:1.5px solid #e53030;}
-  @page{size:A4 portrait;margin:15mm 14mm;}
+  .passage-header{background:white;border-bottom:2px solid #00175c;}
+  .sentence-card{break-inside:avoid;border:1.5px solid #00175c;margin-bottom:6px;padding:8px 10px 7px;}
+  .passage-body{padding:10px;}
+  .passage-header{padding:7px 12px;}
+  .clause-block{margin-bottom:7px;}
+  .divider{margin:.4rem 0;}
+  .gpoint{margin-top:.25rem;}
+  .btn-reanalyze{display:none!important;}
+  @page{size:A4 portrait;margin:15mm 5mm 5mm 5mm;}
 }
 </style>
 </head>
 <body>
 
+<!-- 토큰 편집 팝업 -->
+<div id="editPopup">
+  <h3>토큰 편집</h3>
+  <div class="ep-row"><label>단어</label><input type="text" id="ep-word"></div>
+  <div class="ep-row"><label>라벨</label>
+    <select id="ep-label" onchange="syncLabelToColor()">
+      <option value="">— 없음</option>
+      <option value="S">S (주어)</option>
+      <option value="V">V (동사)</option>
+      <option value="SC">SC (주격보어)</option>
+      <option value="O">O (목적어)</option>
+      <option value="OC">OC (목적격보어)</option>
+      <option value="IO">IO (간접목적어)</option>
+      <option value="DO">DO (직접목적어)</option>
+      <option value="M">M (수식어)</option>
+      <option value="진주어">진주어</option>
+      <option value="등위접속사">등위접속사</option>
+      <option value="종속접속사">종속접속사</option>
+      <option value="관계대명사">관계대명사</option>
+      <option value="유사관계대명사">유사관계대명사</option>
+    </select>
+  </div>
+  <div class="ep-row"><label>색상</label>
+    <select id="ep-color">
+      <option value="s">파랑 (S)</option>
+      <option value="v">빨강 (V)</option>
+      <option value="sc">초록 (SC)</option>
+      <option value="o">갈색 (O)</option>
+      <option value="m">자주 (M)</option>
+      <option value="j">보라 (접속사)</option>
+      <option value="plain">검정</option>
+    </select>
+  </div>
+  <div class="ep-check"><input type="checkbox" id="ep-underline"><label for="ep-underline">밑줄 표시</label></div>
+  <div class="ep-btns">
+    <button class="ep-delete" onclick="deleteToken()">삭제</button>
+    <button class="ep-cancel" onclick="closePopups()">취소</button>
+    <button class="ep-save" onclick="saveTokenEdit()">저장</button>
+  </div>
+</div>
+
+<!-- 절 태그 편집 팝업 -->
+<div id="tagPopup">
+  <h3>절 종류 변경</h3>
+  <button onclick="setTag('주절')">주절</button>
+  <button onclick="setTag('명사절')">명사절</button>
+  <button onclick="setTag('형용사절')">형용사절</button>
+  <button onclick="setTag('부사절')">부사절</button>
+  <button onclick="setTag('전치사구')">전치사구</button>
+  <button onclick="setTag('접속사구')">접속사구</button>
+  <button style="color:#e53030" onclick="deleteClause()">이 절 삭제</button>
+</div>
+
 <div class="top-bar">
-  <h1>영어 문법 구조 분석기</h1>
+  <h1>영어 문법 구조 분석기 <span style="font-size:10px;color:#aaa;font-weight:400;">v2</span></h1>
   <div class="api-row">
     <label>Anthropic API Key</label>
     <input type="password" id="apiKey" placeholder="sk-ant-..." oninput="saveApiKey()" />
@@ -122,8 +232,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
 </div>
 
 <div class="main">
-
-  <!-- Step 1: Upload -->
+  <!-- Step 1 -->
   <div class="card" id="stepUpload">
     <div class="step-label">STEP 1 &nbsp;·&nbsp; 엑셀 파일 업로드</div>
     <div class="upload-zone" onclick="document.getElementById('fi').click()">
@@ -136,7 +245,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
     </div>
   </div>
 
-  <!-- Step 2: Select -->
+  <!-- Step 2 -->
   <div class="card" id="stepSelect" style="display:none;">
     <div class="step-label">STEP 2 &nbsp;·&nbsp; 분석할 지문 선택</div>
     <div class="select-header">
@@ -145,14 +254,15 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
     </div>
     <div class="passage-grid" id="passageGrid"></div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;">
-      <div>
-        <button class="btn-reset" onclick="resetUpload()" style="margin-right:6px;">다른 파일</button>
-      </div>
+      <button class="btn-reset" onclick="resetUpload()">다른 파일</button>
       <button class="btn-primary" id="analyzeBtn" onclick="startAnalysis()" disabled>선택한 지문 분석 시작 →</button>
     </div>
     <div class="progress-wrap" id="progressWrap" style="display:none;">
       <div class="progress-status" id="progressStatus"></div>
       <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div style="margin-top:10px;display:none;" id="stopWrap">
+      <button class="btn-reset" style="color:#e53030;border-color:#e53030;" onclick="stopAnalysis()">⏹ 중단하고 지금까지 결과 보기</button>
     </div>
     <div id="errBox"></div>
   </div>
@@ -161,51 +271,62 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5
   <div id="resultsArea" style="display:none;">
     <div class="results-topbar">
       <button class="btn-reset" onclick="resetAll()">처음부터</button>
-      <button class="btn-print" onclick="window.print()">🖨 A4 인쇄 / PDF 저장</button>
+      <button id="editModeBtn" class="btn-edit" onclick="toggleEditMode()">✏️ 편집 모드</button>
+      <button class="btn-print" onclick="window.print()">🖨 인쇄 / PDF</button>
     </div>
     <div class="legend">
-      <div class="li"><div class="ld" style="background:#185FA5"></div>주어 S</div>
-      <div class="li"><div class="ld" style="background:#e53030"></div>동사 V</div>
-      <div class="li"><div class="ld" style="background:#0F6E56"></div>주격보어 SC</div>
-      <div class="li"><div class="ld" style="background:#854F0B"></div>목적어 O</div>
-      <div class="li"><div class="ld" style="background:#993556"></div>수식어 M</div>
-      <div class="li"><div class="ld" style="background:#7F77DD"></div>접속사</div>
+      <div class="li"><div class="ld" style="background:#185FA5"></div><span style="color:#185FA5;font-weight:600;">주어 S</span></div>
+      <div class="li"><div class="ld" style="background:#e53030"></div><span style="color:#e53030;font-weight:600;">동사 V</span></div>
+      <div class="li"><div class="ld" style="background:#0F6E56"></div><span style="color:#0F6E56;font-weight:600;">보어 SC / OC</span></div>
+      <div class="li"><div class="ld" style="background:#854F0B"></div><span style="color:#854F0B;font-weight:600;">목적어 O / IO / DO</span></div>
+      <div class="li"><div class="ld" style="background:#993556"></div><span style="color:#993556;font-weight:600;">수식어 M</span></div>
+      <div class="li"><div class="ld" style="background:#185FA5;opacity:.5"></div><span style="color:#185FA5;font-weight:600;opacity:.7;">진주어</span></div>
+      <div class="li"><div class="ld" style="background:#7F77DD"></div><span style="color:#7F77DD;font-weight:600;">접속사류</span></div>
     </div>
     <div id="resultsList"></div>
   </div>
-
 </div>
 
 <script>
-let passages=[], results=[];
+let passages=[], results=[], shouldStop=false;
+let editMode=false;
+let editTarget=null; /* {ri,si,ci,ti} */
+let tagTarget=null;  /* {ri,si,ci} */
 
-/* localhost → 프록시 사용, 그 외(github.io 등) → 직접 호출 */
-const IS_LOCAL = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const API_URL  = IS_LOCAL ? '/v1/messages' : 'https://api.anthropic.com/v1/messages';
-const API_HEADERS_EXTRA = IS_LOCAL ? {} : {'anthropic-dangerous-direct-browser-calls':'true'};
+const IS_LOCAL=location.hostname==='localhost'||location.hostname==='127.0.0.1';
+const API_URL=IS_LOCAL?'/v1/messages':'https://api.anthropic.com/v1/messages';
+const API_HEADERS_EXTRA=IS_LOCAL?{}:{'anthropic-dangerous-direct-browser-calls':'true'};
 
-/* ── API 키 자동 저장/불러오기 ── */
+/* 라벨 → 색상 자동 매핑 */
+const LABEL_COLOR={'S':'s','V':'v','SC':'sc','O':'o','OC':'sc','IO':'o','DO':'o','M':'m',
+  '진주어':'s','등위접속사':'j','종속접속사':'j','관계대명사':'j','유사관계대명사':'j','':'plain'};
+const LABEL_UL={'S':true,'V':true,'SC':true,'O':true,'OC':true,'IO':true,'DO':true,'M':true,'진주어':true};
+
+function syncLabelToColor(){
+  const lbl=document.getElementById('ep-label').value;
+  const col=LABEL_COLOR[lbl]||'plain';
+  document.getElementById('ep-color').value=col;
+  document.getElementById('ep-underline').checked=!!LABEL_UL[lbl];
+}
+
+/* ── API 키 ── */
 function saveApiKey(){
-  const key=document.getElementById('apiKey').value;
-  if(key) localStorage.setItem('anthropic_api_key', key);
+  const k=document.getElementById('apiKey').value;
+  if(k) localStorage.setItem('anthropic_api_key',k);
   else localStorage.removeItem('anthropic_api_key');
 }
 function loadApiKey(){
-  const saved=localStorage.getItem('anthropic_api_key');
-  if(saved) document.getElementById('apiKey').value=saved;
+  const s=localStorage.getItem('anthropic_api_key');
+  if(s) document.getElementById('apiKey').value=s;
 }
-document.addEventListener('DOMContentLoaded', loadApiKey);
+document.addEventListener('DOMContentLoaded',loadApiKey);
 
-/* ── HTML 이스케이프 (XSS 방지) ── */
+/* ── HTML 이스케이프 ── */
 function esc(str){
-  return String(str||'')
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#39;');
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+/* ── 소스 파싱 ── */
 function parseSource(code){
   code=String(code).trim();
   let m=code.match(/^H(\d+)-(\d{4})-(\d{2})-(\d+)$/);
@@ -227,9 +348,9 @@ function extractText(raw){
   return s;
 }
 
+/* ── 파일 처리 ── */
 function handleFile(e){
-  const file=e.target.files[0];
-  if(!file) return;
+  const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=function(ev){
     try{
@@ -244,13 +365,11 @@ function handleFile(e){
         if(text.length<20) return;
         passages.push({code,source:parseSource(code),text});
       });
-      if(passages.length===0){ alert('지문을 찾을 수 없습니다. A열: 출처, B열: 지문인지 확인해주세요.'); return; }
+      if(!passages.length){ alert('지문을 찾을 수 없습니다.'); return; }
       renderGrid();
       document.getElementById('stepSelect').style.display='block';
       document.getElementById('stepUpload').style.display='none';
-    } catch(err){
-      alert('파일 읽기 오류: '+err.message);
-    }
+    } catch(err){ alert('파일 읽기 오류: '+err.message); }
   };
   reader.readAsArrayBuffer(file);
 }
@@ -280,39 +399,41 @@ function toggleAll(){
   updateCount();
 }
 
+/* ── 분석 ── */
+function stopAnalysis(){ shouldStop=true; }
+
 async function startAnalysis(){
   const key=document.getElementById('apiKey').value.trim();
-  if(!key){ alert('상단에 Anthropic API Key를 입력해주세요.'); return; }
-
+  if(!key){ alert('API Key를 입력해주세요.'); return; }
   const selected=[...document.querySelectorAll('.pcheck:checked')].map(b=>passages[parseInt(b.dataset.idx)]);
   if(!selected.length) return;
 
-  results=[];
+  results=[]; shouldStop=false;
   document.getElementById('analyzeBtn').disabled=true;
   document.getElementById('progressWrap').style.display='block';
+  document.getElementById('stopWrap').style.display='block';
   document.getElementById('errBox').innerHTML='';
   document.getElementById('resultsArea').style.display='none';
 
   for(let i=0;i<selected.length;i++){
+    if(shouldStop) break;
     const p=selected[i];
-    setStatus(`분석 중... (${i+1} / ${selected.length})  —  ${p.source}`);
+    setStatus(`분석 중... (${i+1} / ${selected.length}) — ${p.source}`);
     setProgress((i/selected.length)*100);
-    try{
-      const data=await analyzeOne(p.text, key);
-      results.push({source:p.source, data});
-    } catch(err){
-      results.push({source:p.source, error:true, errMsg:String(err)});
-    }
-    await new Promise(r=>setTimeout(r,500));
+    try{ const data=await analyzeOne(p.text,key); results.push({source:p.source,data}); }
+    catch(err){ results.push({source:p.source,error:true,errMsg:String(err)}); }
+    await new Promise(r=>setTimeout(r,2000));
   }
 
-  setProgress(100);
-  setStatus(`완료! ${results.length}개 지문 분석됨`);
+  document.getElementById('stopWrap').style.display='none';
   document.getElementById('analyzeBtn').disabled=false;
+  if(!results.length){ setStatus('분석된 결과가 없습니다.'); return; }
+  setProgress(100);
+  setStatus(shouldStop?`⏹ 중단됨 — ${results.length}개 완료`:`완료! ${results.length}개 분석됨`);
   renderResults();
 }
 
-async function analyzeOne(text, key){
+async function analyzeOne(text,key){
   const prompt=`다음 영어 지문의 모든 문장을 문법 분석하세요.
 
 지문:
@@ -320,111 +441,350 @@ async function analyzeOne(text, key){
 ${text}
 """
 
-반드시 아래 JSON 형식만 반환하고 다른 텍스트는 절대 출력하지 마세요. 마크다운 코드블록도 없이 순수 JSON만.
+반드시 아래 JSON 형식만 반환하고 다른 텍스트는 절대 출력하지 마세요. 마크다운 코드블록 없이 순수 JSON만.
 
-{"sentences":[{"num":1,"type":"문장구조유형(예:단순문,주절+관계절,부사절+주절 등)","clauses":[{"tag":"절이름(주절/부사절/관계절/절1/절2 등)","tokens":[{"label":"S 또는 V 또는 SC 또는 O 또는 M 또는 등위접속사 또는 관계대명사 또는 접속사 또는 빈문자열","word":"단어나어구","color":"s 또는 v 또는 sc 또는 o 또는 m 또는 j 또는 plain","underline":true또는false}],"punct":"구두점또는빈문자열"}],"korean":"자연스러운 한국어 해석","grammar":[{"key":"문법포인트명","desc":"내신 출제 가능한 어법 설명 1~2문장"}]}]}
+{"sentences":[{"num":1,"type":"문장구조유형","clauses":[{"tag":"절종류","tokens":[{"label":"라벨","word":"단어나어구","color":"색상코드","underline":true}],"punct":"구두점"}],"korean":"한국어해석","grammar":[{"key":"문법포인트","desc":"설명"}]}]}
 
-분석 규칙:
-- 지문의 모든 문장을 빠짐없이 분석
-- grammar는 내신 출제 가능한 핵심 포인트 2~5개
-- 주어가 and로 연결된 경우 하나의 토큰으로 처리
-- 수식어(부사, 전치사구, 부사절 등)는 반드시 M으로 표시
-- 절이 하나뿐인 단순문은 tag를 "주절"로
-- underline은 S/V/SC/O/M 라벨이 있는 토큰만 true, 나머지 false
-- 접속사류(but/and/or)는 color를 j, label을 "등위접속사"
-- 종속접속사(since/because/as/if/when 등)는 color를 j, label을 "접속사"
-- 관계대명사(that/which/who 등)는 color를 j, label을 "관계대명사"`;
+━━━ 분석 규칙 ━━━
+
+[1. 문장 분류 — type 필드]
+- 주절만: 「단문」
+- 주절+등위절: 「주절+주절(등위접속사)」
+- 부사절+주절 / 주절+부사절 (순서 반영)
+- 주절+형용사절 / 주절+명사절
+- 절 vs 구 구분: despite/because of/due to/owing to/in spite of → 전치사구 (부사절 ❌)
+- 서술어 없는 비문장(항목·공지) → tokens 생략, punct에 "[문장 구조 분석 불가]" 명시
+
+[2. 절 태그 — 6종류]
+- "주절": 문장 핵심절, 복문에도 반드시 포함
+- "명사절": that/whether/if/wh-절이 주어·목적어·보어 역할
+- "형용사절": 관계대명사·관계부사절 → 반드시 별도 clause로 분리 (예외 없음)
+- "부사절": 종속접속사(because/when/if/although 등)가 이끄는 부사 역할 절
+- "전치사구": despite/because of/due to 등 전치사(구) 이끄는 구
+- "접속사구": the moment/the day/every time/the instant 등 명사구가 접속사처럼 절을 이끄는 경우
+
+[3. 문장성분 태깅 — label]
+가능한 label: S / V / SC / OC / O / IO / DO / M / 진주어 / 등위접속사 / 종속접속사 / 관계대명사 / 유사관계대명사 / 빈문자열
+
+■ 주어(S):
+- 의문사(what/who/which)가 절의 주어 역할 → label: "S", color: "s" (M으로 처리 ❌)
+- 가주어 it → word: "it", label: "S(가주어)", color: "s"  ※ word에 주석 넣지 말 것
+- 유도부사 There 도치구문(There is/are/was/were/existed 등):
+  There → label: "M", color: "m" (주어 ❌)
+  뒤따르는 명사구 → label: "S", color: "s"
+  예) There is a book → There[M] is[V] a book[S]
+
+■ 동사(V):
+- not은 동사구의 일부 → V 토큰에 포함. 예) "is not" → 단일 V 토큰, "cannot" → 단일 V 토큰 (M으로 별도 처리 ❌)
+- 조동사+본동사도 하나의 V 토큰으로 묶음
+
+■ 주격보어(SC):
+- 연결동사(be/become/remain/stay/seem/appear/feel/look/sound/smell/taste/get/turn/go/keep) 뒤 형용사·명사·to부정사구 → label: "SC", color: "sc" (M으로 처리 ❌)
+- not only A but (also) B가 보어 자리면 A, B 모두 SC
+- 가주어 it 구문: to부정사구 / that절 → label: "진주어", color: "s", underline: true
+- 예) It is easy to feel~ → it[S(가주어)] is[V] easy[SC] + 진주어절 별도 clause
+
+■ 목적격보어(OC) — 5형식:
+- 사역동사(make/let/have/help) + O + 동사원형 → 동사원형 부분: label: "OC", color: "sc", underline: true
+- 지각동사(see/watch/hear/feel/notice) + O + 동사원형/현재분사 → label: "OC", color: "sc", underline: true
+- want/ask/tell/allow/enable/cause/force/get/expect/encourage/permit/require + O + to-V → to-V: label: "OC", color: "sc", underline: true
+- consider/call/find/keep/leave/elect/appoint/name + O + 형용사/명사 → 형용사/명사: label: "OC", color: "sc", underline: true
+- 예) help us enter → us[O] enter[OC]  /  make him happy → him[O] happy[OC]
+  ※ 5형식 목적어 뒤 성분을 M으로 처리하는 것은 오류
+
+■ 목적어(O / IO / DO):
+- 4형식 수여동사(give/send/tell/show/ask/offer/teach/bring/lend/buy) 뒤 두 목적어:
+  첫 번째 → label: "IO" (간접목적어), color: "o", underline: true
+  두 번째 → label: "DO" (직접목적어), color: "o", underline: true
+- 명사절이 문장성분(주어·목적어·보어) 역할을 할 때:
+  반드시 주절 토큰 행에 자리표시 토큰을 추가하고 명사절은 별도 clause로 분리.
+  자리표시 토큰의 word는 "[명사절]", label과 color는 해당 문장성분에 맞게:
+  · 주어절  → label: "S",  color: "s",  underline: true,  word: "[명사절]"
+  · 목적어절 → label: "O",  color: "o",  underline: true,  word: "[명사절]"
+  · 보어절  → label: "SC", color: "sc", underline: true,  word: "[명사절]"
+  예) I know that he is right → I[S] know[V] [명사절][O] / 명사절: that he is right
+
+■ 수식어(M):
+- however/therefore/thus/moreover/indeed 등 접속부사 → label: "M" (접속사 ❌)
+- without + 동명사구 → 전치사구이므로 tag: "전치사구" 또는 M 토큰으로 처리 (종속접속사 ❌)
+- 독립부사어(문두·문미)는 M으로 별도 토큰, S/V/O/SC와 섞지 않음
+- 연결동사 뒤 형용사·명사 → SC이지 M이 아님 (예: "is private" → is[V] private[SC], M ❌)
+
+■ 접속사류:
+- 등위접속사(and/but/or/so/for): color "j", label "등위접속사"
+- 종속접속사(because/when/if/although/that/whether 등): color "j", label "종속접속사", 해당 절 맨 앞에 표기
+- 관계대명사·관계부사(who/which/that/where/when/how 등): color "j", label "관계대명사"
+  ※ 전치사+관계대명사(in which / of which / to whom / by which 등): 전치사와 관계대명사를 하나의 토큰으로 묶어 word: "in which", label: "관계대명사" (전치사만 따로 plain 처리 ❌)
+  ※ 형용사절 안에 "[관계대명사=선행사]" 같은 주석 토큰을 절대 추가하지 말 것
+- 유사관계대명사(than/as가 관계대명사처럼 절을 이끌 때): color "j", label "유사관계대명사"
+  예) more than he needs(=which he needs) → than[유사관계대명사]
+- 접속사구(the moment/the day 등): color "j", label "종속접속사"
+
+■ underline: S/V/SC/OC/O/IO/DO/M/진주어 → true, 접속사류·plain → false
+
+[4. 어법 해설(grammar)]
+- 아래 10개 항목 중 해당 문장에서 실제 확인 가능한 것만 2~3개 선별
+  ① 수일치 ② 시제(부사절 미래형 금지) ③ 준동사(to부정사 vs 동명사)
+  ④ 관계사(관계대명사 vs 관계부사, that vs which/who)
+  ⑤ 분사(능동 vs 수동) ⑥ 병렬구조 ⑦ 수동태 ⑧ 가정법
+  ⑨ 접속사 vs 전치사(because vs because of, although vs despite 등)
+  ⑩ 비교급·최상급
+- 해당 없으면 grammar: []
+- despite/because of/due to → "전치사(구)로서 뒤에 명사(구)를 취하며 절을 이끌 수 없다" 명시
+- for(등위접속사, =because 의미) → "이유를 나타내는 등위접속사" (종속접속사 ❌)
+- 한 문장 최대 3개, desc: 어법 근거 1~2문장`;
 
   const res=await fetch(API_URL,{
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key':key,
-      'anthropic-version':'2023-06-01',
-      ...API_HEADERS_EXTRA,
-    },
-    body:JSON.stringify({
-      model:'claude-sonnet-4-5',
-      max_tokens:8000,
-      messages:[{role:'user',content:prompt}]
-    })
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01',...API_HEADERS_EXTRA},
+    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:8000,messages:[{role:'user',content:prompt}]})
   });
-
-  if(!res.ok){
-    const t=await res.text();
-    throw new Error(`API ${res.status}: ${t.substring(0,200)}`);
-  }
-
+  if(!res.ok){ const t=await res.text(); throw new Error(`API ${res.status}: ${t.substring(0,200)}`); }
   const d=await res.json();
   if(d.error) throw new Error(`${d.error.type}: ${d.error.message}`);
-
-  const textBlocks=(d.content||[]).filter(b=>b.type==='text');
-  if(!textBlocks.length) throw new Error('응답에 텍스트 없음');
-
-  let raw=textBlocks.map(b=>b.text).join('').trim();
-  raw=raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-
+  const blocks=(d.content||[]).filter(b=>b.type==='text');
+  if(!blocks.length) throw new Error('응답에 텍스트 없음');
+  let raw=blocks.map(b=>b.text).join('').trim()
+    .replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
   const parsed=JSON.parse(raw);
   if(!parsed.sentences) throw new Error('sentences 필드 없음');
   return parsed;
 }
 
+/* ── API 테스트 ── */
+async function testApi(){
+  const key=document.getElementById('apiKey').value.trim();
+  const el=document.getElementById('testResult');
+  if(!key){ el.style.color='#e53030'; el.textContent='키를 먼저 입력하세요'; return; }
+  el.style.color='#888'; el.textContent='테스트 중...';
+  try{
+    const res=await fetch(API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01',...API_HEADERS_EXTRA},
+      body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'hi'}]})
+    });
+    if(res.ok){ el.style.color='#0F6E56'; el.textContent='✓ 연결 성공'; }
+    else{ const t=await res.text(); el.style.color='#e53030'; el.textContent=`✗ API ${res.status}: ${t.substring(0,60)}`; }
+  } catch(err){ el.style.color='#e53030'; el.textContent=`✗ ${err.message}`; }
+}
+
+/* ── 렌더링 ── */
 function renderResults(){
   const list=document.getElementById('resultsList');
-  list.innerHTML=results.map(r=>{
+  list.innerHTML=results.map((r,ri)=>{
     if(r.error) return `
-      <div class="passage-block">
-        <div class="passage-header"><div class="passage-source">${esc(r.source)}</div></div>
+      <div class="passage-block" id="block-${ri}">
+        <div class="passage-header">
+          <div class="passage-source">${esc(r.source)}</div>
+          <button class="btn-reanalyze" onclick="reanalyzeOne(${ri})">↺ 재분석</button>
+        </div>
         <div class="passage-body"><div style="font-size:13px;color:#e53030;font-family:monospace;">오류: ${esc(r.errMsg||'알 수 없는 오류')}</div></div>
       </div>`;
     return `
-      <div class="passage-block">
-        <div class="passage-header"><div class="passage-source">${esc(r.source)}</div></div>
-        <div class="passage-body">${renderSentences(r.data.sentences)}</div>
+      <div class="passage-block" id="block-${ri}">
+        <div class="passage-header">
+          <div class="passage-source">${esc(r.source)}</div>
+          <button class="btn-reanalyze" onclick="reanalyzeOne(${ri})">↺ 재분석</button>
+        </div>
+        <div class="passage-body">${renderSentences(r.data.sentences,ri)}</div>
       </div>`;
   }).join('');
   document.getElementById('resultsArea').style.display='block';
   document.getElementById('stepSelect').style.display='none';
   document.getElementById('stepUpload').style.display='none';
+  if(editMode) document.getElementById('resultsList').classList.add('edit-mode');
 }
 
-function renderSentences(sents){
-  return (sents||[]).map(s=>`
+function renderSentences(sents,ri){
+  return (sents||[]).map((s,si)=>`
     <div class="sentence-card">
       <div class="sent-header">
         <div class="sent-num">${s.num|0}</div>
-        <div class="sent-type">${esc(s.type)}</div>
+        <div class="sent-type"${editMode?` onclick="editSentType(${ri},${si},this)"`:''}>${esc(s.type)}</div>
       </div>
-      ${(s.clauses||[]).map(cl=>`
-        <div class="clause-block">
+      ${(s.clauses||[]).map((cl,ci)=>{
+        const tag=cl.tag||'';
+        const isAdj=tag==='형용사절';
+        const isPrep=tag==='전치사구';
+        const isConj=tag==='접속사구';
+        const clsExtra=isAdj?' adj-clause':isPrep?' prep-clause':isConj?' conj-clause':'';
+        return `
+        <div class="clause-block${clsExtra}">
           <div class="clause-side">
-            <div class="clause-tag">${esc(cl.tag)}</div>
+            <div class="clause-tag"${editMode?` onclick="openTagPopup(event,${ri},${si},${ci})"`:''}>${esc(tag)}</div>
             <div class="clause-vline"></div>
           </div>
           <div class="token-area">
-            ${(cl.tokens||[]).map(t=>{
+            ${(cl.tokens||[]).map((t,ti)=>{
               const c=t.color||'plain';
-              const hasLabel=t.label&&t.label.trim();
-              /* underline만 S/V/SC/O/M 계열에만 적용 (plain·j 는 제외) */
-              const canUnderline=t.underline&&c!=='plain'&&c!=='j';
-              return `<div class="token">
-                ${hasLabel
-                  ? `<div class="lbl c${esc(c)}">${esc(t.label)}</div>`
-                  : `<div class="lbl-empty"></div>`}
-                <div class="wd c${esc(c)}${canUnderline?' u'+esc(c):''}">${esc(t.word)}</div>
+              const lbl=t.label||'';
+              const hasLabel=lbl&&lbl!=='빈문자열'&&lbl!=='-';
+              const canUL=t.underline&&c!=='plain'&&c!=='j';
+              const ulClass=canUL?` u${c}`:'';
+              const editAttr=editMode?` onclick="openTokenEditor(event,${ri},${si},${ci},${ti})"` :'';
+              return `<div class="token"${editAttr}>
+                ${hasLabel?`<div class="lbl c${esc(c)}">${esc(lbl)}</div>`:`<div class="lbl-empty">&nbsp;</div>`}
+                <div class="wd c${esc(c)}${ulClass}">${esc(t.word)}</div>
               </div><div class="gs"></div>`;
             }).join('')}
             ${cl.punct?`<div class="punct">${esc(cl.punct)}</div>`:''}
           </div>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
       <div class="divider"></div>
-      <div class="korean">${esc(s.korean)}</div>
-      ${(s.grammar||[]).map(g=>`
+      <div class="korean"${editMode?` contenteditable="false" onclick="makeEditable(this,${ri},${si},'korean')"`:''} >${esc(s.korean)}</div>
+      ${(s.grammar||[]).map((g,gi)=>`
         <div class="gpoint">
           <div class="gicon">◎</div>
-          <div><span class="gkey">${esc(g.key)}</span> — ${esc(g.desc)}</div>
+          <div>
+            <span class="gkey"${editMode?` contenteditable="false" onclick="makeEditable(this,${ri},${si},null,${gi},'key')"`:''}>${esc(g.key)}</span>
+            <span> — </span>
+            <span${editMode?` contenteditable="false" onclick="makeEditable(this,${ri},${si},null,${gi},'desc')"`:''}>${esc(g.desc)}</span>
+          </div>
         </div>`).join('')}
+      ${editMode?`<div style="margin-top:8px;"><button class="btn-sm" style="font-size:10px;" onclick="addGrammarPoint(${ri},${si})">+ 어법 추가</button></div>`:''}
     </div>`).join('');
+}
+
+/* ── 편집 모드 ── */
+function toggleEditMode(){
+  editMode=!editMode;
+  const btn=document.getElementById('editModeBtn');
+  btn.textContent=editMode?'✏️ 편집 중':'✏️ 편집 모드';
+  btn.classList.toggle('active',editMode);
+  const list=document.getElementById('resultsList');
+  list.classList.toggle('edit-mode',editMode);
+  renderResults();
+}
+
+/* 토큰 편집 팝업 */
+function openTokenEditor(e,ri,si,ci,ti){
+  e.stopPropagation();
+  closePopups();
+  const t=results[ri].data.sentences[si].clauses[ci].tokens[ti];
+  editTarget={ri,si,ci,ti};
+  document.getElementById('ep-word').value=t.word||'';
+  document.getElementById('ep-label').value=t.label||'';
+  document.getElementById('ep-color').value=t.color||'plain';
+  document.getElementById('ep-underline').checked=!!t.underline;
+  const pop=document.getElementById('editPopup');
+  pop.style.display='block';
+  const rect=e.target.getBoundingClientRect();
+  const x=Math.min(rect.left,window.innerWidth-240);
+  const y=rect.bottom+6+window.scrollY;
+  pop.style.left=x+'px';
+  pop.style.top=y+'px';
+}
+
+function saveTokenEdit(){
+  if(!editTarget) return;
+  const {ri,si,ci,ti}=editTarget;
+  const t=results[ri].data.sentences[si].clauses[ci].tokens[ti];
+  t.word=document.getElementById('ep-word').value;
+  t.label=document.getElementById('ep-label').value;
+  t.color=document.getElementById('ep-color').value;
+  t.underline=document.getElementById('ep-underline').checked;
+  closePopups();
+  renderResults();
+}
+
+function deleteToken(){
+  if(!editTarget) return;
+  const {ri,si,ci,ti}=editTarget;
+  results[ri].data.sentences[si].clauses[ci].tokens.splice(ti,1);
+  closePopups();
+  renderResults();
+}
+
+/* 절 태그 팝업 */
+function openTagPopup(e,ri,si,ci){
+  e.stopPropagation();
+  closePopups();
+  tagTarget={ri,si,ci};
+  const pop=document.getElementById('tagPopup');
+  pop.style.display='block';
+  const rect=e.target.getBoundingClientRect();
+  pop.style.left=Math.min(rect.left,window.innerWidth-180)+'px';
+  pop.style.top=(rect.bottom+4+window.scrollY)+'px';
+}
+
+function setTag(tag){
+  if(!tagTarget) return;
+  const {ri,si,ci}=tagTarget;
+  results[ri].data.sentences[si].clauses[ci].tag=tag;
+  closePopups();
+  renderResults();
+}
+
+function deleteClause(){
+  if(!tagTarget) return;
+  const {ri,si,ci}=tagTarget;
+  results[ri].data.sentences[si].clauses.splice(ci,1);
+  closePopups();
+  renderResults();
+}
+
+/* 인라인 텍스트 편집 */
+function makeEditable(el,ri,si,field,gi,subfield){
+  if(!editMode) return;
+  el.contentEditable='true';
+  el.focus();
+  const sel=window.getSelection();
+  if(sel){ const range=document.createRange(); range.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(range); }
+  el.onblur=()=>{
+    el.contentEditable='false';
+    const val=el.textContent;
+    if(field==='korean') results[ri].data.sentences[si].korean=val;
+    else if(gi!=null){
+      if(subfield==='key') results[ri].data.sentences[si].grammar[gi].key=val;
+      else if(subfield==='desc') results[ri].data.sentences[si].grammar[gi].desc=val;
+    }
+  };
+}
+
+/* 문장 type 편집 */
+function editSentType(ri,si,el){
+  if(!editMode) return;
+  el.contentEditable='true';
+  el.focus();
+  el.onblur=()=>{
+    el.contentEditable='false';
+    results[ri].data.sentences[si].type=el.textContent;
+  };
+}
+
+/* 어법 포인트 추가 */
+function addGrammarPoint(ri,si){
+  results[ri].data.sentences[si].grammar.push({key:'새 포인트',desc:'설명을 입력하세요.'});
+  renderResults();
+}
+
+function closePopups(){
+  document.getElementById('editPopup').style.display='none';
+  document.getElementById('tagPopup').style.display='none';
+  editTarget=null; tagTarget=null;
+}
+document.addEventListener('click',e=>{
+  const pop=document.getElementById('editPopup');
+  const tap=document.getElementById('tagPopup');
+  if(pop.style.display==='block'&&!pop.contains(e.target)) closePopups();
+  if(tap.style.display==='block'&&!tap.contains(e.target)) closePopups();
+});
+
+/* ── 재분석 ── */
+async function reanalyzeOne(ri){
+  const key=document.getElementById('apiKey').value.trim();
+  if(!key){ alert('API Key를 입력해주세요.'); return; }
+  const r=results[ri];
+  const block=document.getElementById(`block-${ri}`);
+  const btn=block.querySelector('.btn-reanalyze');
+  btn.disabled=true; btn.textContent='분석 중...';
+  block.querySelector('.passage-body').innerHTML=`<div style="font-size:12px;color:#888;padding:12px;">재분석 중...</div>`;
+  const original=passages.find(p=>p.source===r.source);
+  if(!original){ btn.disabled=false; btn.textContent='↺ 재분석'; alert('원본 지문 없음'); return; }
+  try{ const data=await analyzeOne(original.text,key); results[ri]={source:r.source,data}; }
+  catch(err){ results[ri]={source:r.source,error:true,errMsg:String(err)}; }
+  renderResults();
 }
 
 function setStatus(msg){document.getElementById('progressStatus').textContent=msg;}
@@ -437,49 +797,18 @@ function resetUpload(){
   document.getElementById('stepUpload').style.display='block';
 }
 
-async function testApi(){
-  const key=document.getElementById('apiKey').value.trim();
-  const el=document.getElementById('testResult');
-  if(!key){ el.style.color='#e53030'; el.textContent='키를 먼저 입력하세요'; return; }
-  el.style.color='#888'; el.textContent='테스트 중...';
-  try{
-    const res=await fetch(API_URL,{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'x-api-key':key,
-        'anthropic-version':'2023-06-01',
-        ...API_HEADERS_EXTRA,
-      },
-      body:JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:10,
-        messages:[{role:'user',content:'hi'}]
-      })
-    });
-    if(res.ok){ el.style.color='#0F6E56'; el.textContent='✓ 연결 성공'; }
-    else{
-      const t=await res.text();
-      el.style.color='#e53030';
-      el.textContent=`✗ API 오류 ${res.status}: ${t.substring(0,80)}`;
-    }
-  } catch(err){
-    el.style.color='#e53030';
-    el.textContent=`✗ ${err.message} — 콘솔(F12)에서 상세 확인`;
-    console.error('[API 테스트 실패]', err);
-  }
-}
-
 function resetAll(){
-  results=[];passages=[];
+  results=[]; passages=[]; editMode=false;
   document.getElementById('fi').value='';
   document.getElementById('resultsArea').style.display='none';
   document.getElementById('stepUpload').style.display='block';
   document.getElementById('stepSelect').style.display='none';
   document.getElementById('progressWrap').style.display='none';
+  document.getElementById('stopWrap').style.display='none';
   document.getElementById('errBox').innerHTML='';
-  setStatus('');
-  setProgress(0); /* ← 진행바 초기화 */
+  document.getElementById('editModeBtn').classList.remove('active');
+  document.getElementById('editModeBtn').textContent='✏️ 편집 모드';
+  setStatus(''); setProgress(0);
 }
 </script>
 </body>
